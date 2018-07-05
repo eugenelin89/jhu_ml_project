@@ -1,0 +1,15 @@
+---
+title: "Practical Machine Learning Project"
+author: "Eugene Lin"
+date: '2018-07-05'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load}
+training <- read.csv("pml-training.csv")
+str(training)
+```
