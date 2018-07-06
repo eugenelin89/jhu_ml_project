@@ -9,7 +9,66 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+### Overview  
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. The objective of this exercise is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. We commpare two Machine Learning algorithms - Decision Tree and Random Forest to learn from the data and to make predictions. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har
+
+
+### Data
+Training and Testing data are downloaded to local development machine from the following URL.  
+Training: https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv   
+Testing: https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
 ```{r load}
+library(caret);library(rattle)
 training <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
 str(training)
+```
+  
+It can be seen from abvoe summary that there are many missing data. Initially, removing only columns with data missing above a certain cutoff was considered. However, it was found that the approach makes no different than from simply removing column with any missing data. Thus, we simply remove all columns that contain any missing value. We also remove columns 1 to 7 which do not yield any predicitive value.   
+
+```{r cleaning}
+remove_idx <-  which(colSums(is.na(training) |training=="")>1) 
+training <- training[, -remove_idx]
+testing <- testing[,-remove_idx]
+
+training <- training[, -c(1:7)]
+testing <- testing[, -c(1:7)]
+```
+
+
+We further divide the training data into training and validation sets.  
+
+```{r splitting}
+inTrain <- createDataPartition(training$classe, p = 0.75, list = F)
+training <- training[inTrain,]
+validation <- training[-inTrain,]
+```
+
+### Learning with Decision Tree
+We peform training using Decision Tree, with k-fold cross-validation where k=5. As demonstrated below the accuracy is approximately 50% when tested with validation set.
+```{r tree}
+model_tree <- train(classe~., data=training, method="rpart", trControl=trainControl(method="cv", number=5))
+fancyRpartPlot(model_tree$finalModel)
+pred_tree_validation <- predict(model_tree,newdata=validation)
+confusionMatrix(validation$classe,pred_tree_validation)$overall[1]
+```
+
+
+### Learning with Random Forest
+We peform training using Random Forest, with k-fold cross-validation where k=5. As demonstrated below the accuracy is much better than the simple decision tree, with near 100% accuracy. Note that the number of trees required for accurate prediction is around 27.
+
+```{r randomforest}
+model_forest <- train(classe~., data=training, method="rf", trControl=trainControl(method="cv", number=5))
+pred_forest_validation <- predict(model_forest,newdata=validation)
+confusionMatrix(validation$classe,pred_forest_validation)$overall[1]
+print(model_forest)
+plot(model_forest$finalModel,main="Error of Random Forest Model vs Number of Trees")
+```
+
+### Test Set Prediction and Conclusion
+With the two algorithms evaluated by the validation set, it is clear that Random Forest should be used as the prediction algorithm. Here, we apply the learnt Random Forest model on the test set.
+
+```{r test}
+predict(model_forest,newdata=testing)
 ```
